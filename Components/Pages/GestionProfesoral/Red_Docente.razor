@@ -1,0 +1,283 @@
+@page "/Red_Docente"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<PageTitle>Red Docente</PageTitle>
+
+<div class="container mt-4">
+    <h3>Red Docente</h3>
+
+    @* ───────── ALERTA ───────── *@
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ───────── BOTON NUEVO ───────── *@
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nuevo Red Docente</button>
+    }
+
+    @* ───────── LIMITE DE REGISTROS ───────── *@
+    <div class="d-flex align-items-center mb-3">
+        <label class="form-label me-2 mb-0">Limite:</label>
+        <input class="form-control me-2" type="number" style="width:100px" @bind="limite" />
+        <button class="btn btn-outline-secondary" @onclick="CargarRegistros">Cargar</button>
+    </div>
+
+    @* ───────── FORMULARIO ───────── *@
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Red Docente" : "Nueva Red Docente")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                     <div class="col-md-6 mb-3">
+                        <label class="form-label">red</label>
+                        <select class="form-select" @bind="red">
+                            <option value="0">Seleccione una red</option>
+                            @foreach (var d in registrosForeignKey1)
+                            {
+                                <option value="@Convert.ToInt32(d["idr"])">
+                                    @d["nombre"]
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Docente</label>
+                        <select class="form-select" @bind="docente">
+                            <option value="0">Seleccione un docente</option>
+                            @foreach (var d in registrosForeignKey2)
+                            {
+                                    <option value="@d["cedula"]">
+                                    @d["nombres"] @d["apellidos"]
+                                    </option>
+                            }
+                        </select>
+                    </div>  
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de inicio</label>
+                        <input type="date" class="form-control" @bind="fecha_inicio" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de finalización</label>
+                        <input type="date" class="form-control" @bind="fecha_fin" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Act_Destacadas</label>
+                        <input type="text" class="form-control" @bind="act_destacadas" />
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @* ───────── SPINNER ───────── *@
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @* ───────── TABLA ───────── *@
+    @if (!cargando && registros.Any() && registrosForeignKey1.Any() && registrosForeignKey2.Any())
+    {
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Red</th>
+                    <th>Docente</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Act_Destacadas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reg in registros)
+                {
+                        <tr>
+                            <td>
+                                @{
+                                    var redId = Convert.ToInt32(reg["red"]);
+                                    var redInfo = registrosForeignKey1
+                                        .FirstOrDefault(d => Convert.ToInt32(d["idr"]) == redId);
+                                }
+                                @((redInfo != null)
+                                    ? $"{redInfo["nombre"]}"
+                                    : reg["red"])
+                            </td>
+                            <td>
+                                @{
+                                    var docenteId = Convert.ToInt32(reg["docente"]);
+                                    var docenteInfo = registrosForeignKey2
+                                        .FirstOrDefault(d => Convert.ToInt32(d["cedula"]) == docenteId);
+                                }
+                                @((docenteInfo != null)
+                                    ? $"{docenteInfo["nombres"]} {docenteInfo["apellidos"]}"
+                                    : reg["docente"])
+                            </td>
+                            <td>@reg["fecha_inicio"]</td>
+                            <td>@reg["fecha_fin"]</td>
+                            <td>@reg["act_destacadas"]</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm me-1"
+                                        @onclick="() => EditarRegistro(reg)">Editar</button>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                            </td>
+                        </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (!cargando && !registros.Any())
+    {
+        <div class="alert alert-warning">No se encontraron registros en la tabla intereses_futuros.</div>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    
+    private List<Dictionary<string, object?>> registrosForeignKey1 = new();//los de red
+    private List<Dictionary<string, object?>> registrosForeignKey2 = new();//los de docente
+
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+    
+    // Campos del formulario
+    private int red = 0;
+    private int docente = 0;
+
+    private DateTime fecha_inicio = DateTime.Now;
+    private DateTime? fecha_fin = null;
+
+    private string act_destacadas = string.Empty; 
+
+    private int red_viejo = 0;
+
+    private int docente_viejo = 0;
+    private int? limite = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarRegistros();
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("red_docente", limite);
+        registrosForeignKey1 = await Api.ListarAsync("red");
+        registrosForeignKey2 = await Api.ListarAsync("docente");
+        cargando = false;
+    }
+
+    private void NuevoRegistro()
+    {
+        editando = false;
+        red = 0;
+        docente = 0;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        red_viejo = Convert.ToInt32(reg["red"] ?? 0);
+        docente_viejo = Convert.ToInt32(reg["docente"] ?? 0);
+        red = red_viejo;
+        docente = docente_viejo;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["red"] = red,
+            ["docente"] = docente,
+            ["fecha_inicio"] = fecha_inicio,
+            ["fecha_fin"] = fecha_fin,
+            ["act_destacadas"] = act_destacadas
+
+        };
+
+        if (editando)
+        {
+            var parametros = new Dictionary<string, object?>
+            {
+                ["red_nuevo"] = red,
+                ["docente_nuevo"] = docente,
+                ["red_viejo"] = red_viejo,
+                ["docente_viejo"] = docente_viejo,
+                ["fecha_inicio"] = fecha_inicio,
+                ["fecha_fin"] = fecha_fin,
+                ["act_destacadas"] = act_destacadas
+            };
+            var (ok, _, msg) = await Sp.EjecutarSpAsync("sp_actualizar_red_docente", parametros);
+            exito = ok;
+            mensaje = ok ? "Actualización exitosa." : $"Error: {msg}";
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("red_docente", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        int docente = Convert.ToInt32(reg["docente"]);
+        int red = Convert.ToInt32(reg["red"] ?? 0);
+
+        var parametros = new Dictionary<string, object?>
+        {
+            ["red"] = red,
+            ["docente"] = docente
+        };
+
+        var (ok, _, msg) = await Sp.EjecutarSpAsync("sp_eliminar_red_docente", parametros);
+        exito = ok;
+        mensaje = ok ? "Eliminación exitosa." : $"Error: {msg}";
+
+        if (exito)
+        {
+            await CargarRegistros();
+        }
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+}
