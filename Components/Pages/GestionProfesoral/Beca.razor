@@ -102,7 +102,16 @@
                 @foreach (var reg in registros)
                 {
                     <tr>
-                        <td>@reg["estudios"]</td>
+                        <td>
+                            @{
+                                var estudioId = Convert.ToInt32(reg["estudios"]);
+                                var estudio = registrosForeingKey2
+                                .FirstOrDefault(e => Convert.ToInt32(e["id"]) == estudioId);
+                            }
+                             @((estudio != null)
+                                    ? $"{estudio["titulo"]}"
+                                    : reg["estudios"])
+                        </td>
                         <td>@reg["tipo"]</td>
                         <td>@reg["institucion"]</td>
                         <td>@reg["fecha_inicio"]</td>
@@ -128,6 +137,7 @@
 @code {
     private List<Dictionary<string, object?>> registros = new();
     private List<Dictionary<string, object?>> registrosForeingKey = new();
+    private List<Dictionary<string, object?>> registrosForeingKey2 = new();
 
     private bool cargando = true;
     private bool mostrarFormulario = false;
@@ -153,6 +163,7 @@
     {
         cargando = true;
         registros = await Api.ListarAsync("beca", limite);
+        registrosForeingKey2 = await Api.ListarAsync("estudios_realizados", null);
         await CargarEstudiosSinBeca();
         cargando = false;
     }

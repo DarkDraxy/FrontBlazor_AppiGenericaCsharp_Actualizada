@@ -1,11 +1,11 @@
-@page "/red"
+@page "/reconocimiento"
 @rendermode InteractiveServer
 @inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
 
-<PageTitle>Red</PageTitle>
+<PageTitle>Reconocimiento</PageTitle>
 
 <div class="container mt-4">
-    <h3>Red</h3>
+    <h3>Reconocimiento</h3>
 
     @* ───────── ALERTA ───────── *@
     @if (!string.IsNullOrEmpty(mensaje))
@@ -34,26 +34,46 @@
     {
         <div class="card mb-3">
             <div class="card-header">
-                @(editando ? "Editar Red" : "Nueva Red")
+                @(editando ? "Editar Reconocimiento" : "Nuevo Reconocimiento")
             </div>
             <div class="card-body">
                 <div class="row">
-                     <div class="col-md-6 mb-3">
-                        <label class="form-label">idr</label>
-                        <input class="form-control" @bind="campoIdr" />
-                    </div> 
+                     <!--<div class="col-md-6 mb-3">
+                        <label class="form-label">id</label>
+                        <input class="form-control" @bind="id" />
+                    </div>  --->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Tipo</label>
+                        <input class="form-control" @bind="tipo" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha</label>
+                        <input class="form-control" type="date" @bind="fecha" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Institución</label>
+                        <input class="form-control" @bind="institucion" />
+                    </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nombre</label>
-                        <input class="form-control" @bind="campoNombre" />
+                        <input class="form-control" @bind="nombre" />
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Url</label>
-                        <input class="form-control" type="url" @bind="campoUrl" />
+                        <label class="form-label">Ambito</label>
+                        <input class="form-control" @bind="ambito" />
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Pais</label>
-                        <input class="form-control" @bind="campoPais" />
-                    </div>
+                        <label class="form-label">Docente</label>
+                        <select class="form-select" @bind="docente">
+                            <option value="0">Seleccione un docente</option>
+                            @foreach (var d in registrosForeignKey)
+                            {
+                                    <option value="@d["cedula"]">
+                                    @d["nombres"] @d["apellidos"]
+                                    </option>
+                            }
+                        </select>
+                    </div> 
                 </div>
                 <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
                 <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
@@ -77,10 +97,13 @@
         <table class="table table-striped table-hover">
             <thead class="table-dark">
                 <tr>
-                    <th>idr</th>
+                    <th>Id</th>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Institución</th>
                     <th>Nombre</th>
-                    <th>Url</th>
-                    <th>Pais</th>
+                    <th>Ambito</th>
+                    <th>Docente</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -88,10 +111,22 @@
                 @foreach (var reg in registros)
                 {
                     <tr>
-                        <td>@reg["idr"]</td>
+                        <td>@reg["id"]</td>
+                        <td>@reg["tipo"]</td>
+                        <td>@reg["fecha"]</td>
+                        <td>@reg["institucion"]</td>
                         <td>@reg["nombre"]</td>
-                        <td>@reg["url"]</td>
-                        <td>@reg["pais"]</td>
+                        <td>@reg["ambito"]</td>
+                        <td>
+                                @{
+                                    var docenteId = Convert.ToInt32(reg["docente"]);
+                                    var docenteInfo = registrosForeignKey
+                                        .FirstOrDefault(d => Convert.ToInt32(d["cedula"]) == docenteId);
+                                }
+                                @((docenteInfo != null)
+                                    ? $"{docenteInfo["nombres"]} {docenteInfo["apellidos"]}"
+                                    : reg["docente"])
+                            </td>
                         <td>
                             <button class="btn btn-warning btn-sm me-1"
                                     @onclick="() => EditarRegistro(reg)">Editar</button>
@@ -112,6 +147,8 @@
 
 @code {
     private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> registrosForeignKey = new();//para docente
+
     private bool cargando = true;
     private bool mostrarFormulario = false;
     private bool editando = false;
@@ -119,10 +156,13 @@
     private bool exito = false;
     
     // Campos del formulario
-    private int campoIdr = 0;
-    private string campoNombre = string.Empty;
-    private string campoUrl = string.Empty;
-    private string campoPais = string.Empty;
+    private int id = 0;
+    private string tipo = string.Empty;
+    private DateTime fecha = DateTime.Now;
+    private string nombre = string.Empty;
+    private string institucion = string.Empty;
+    private string ambito = string.Empty;
+    private int docente = 0;
     private int? limite = null;
 
     protected override async Task OnInitializedAsync()
@@ -133,17 +173,21 @@
     private async Task CargarRegistros()
     {
         cargando = true;
-        registros = await Api.ListarAsync("red", limite);
+        registros = await Api.ListarAsync("reconocimiento", limite);
+        registrosForeignKey = await Api.ListarAsync("docente");//para docente
         cargando = false;
     }
 
     private void NuevoRegistro()
     {
         editando = false;
-        campoIdr = 0;
-        campoNombre = string.Empty;
-        campoUrl = string.Empty;
-        campoPais = string.Empty;
+        id = 0;
+        tipo = string.Empty;
+        fecha = DateTime.Now;
+        nombre = string.Empty;
+        institucion = string.Empty;
+        ambito = string.Empty;
+        docente = 0;
         mostrarFormulario = true;
         mensaje = string.Empty;
     }
@@ -151,10 +195,13 @@
     private void EditarRegistro(Dictionary<string, object?> reg)
     {
         editando = true;
-        campoIdr = Convert.ToInt32(reg["idr"] ?? 0);
-        campoNombre = reg["nombre"]?.ToString() ?? "";
-        campoUrl = reg["url"]?.ToString() ?? "";
-        campoPais = reg["pais"]?.ToString() ?? "";
+        id = Convert.ToInt32(reg["id"] ?? 0);
+        tipo = reg["tipo"]?.ToString() ?? "";
+        fecha = DateTime.Parse(reg["fecha"]?.ToString() ?? DateTime.Now.ToString());
+        nombre = reg["nombre"]?.ToString() ?? "";
+        institucion = reg["institucion"]?.ToString() ?? "";
+        ambito = reg["ambito"]?.ToString() ?? "";
+        docente = Convert.ToInt32(reg["docente"] ?? 0);
         mostrarFormulario = true;
         mensaje = string.Empty;
     }
@@ -163,22 +210,25 @@
     {
         var datos = new Dictionary<string, object?>
         {
-            ["idr"] = campoIdr,
-            ["nombre"] = campoNombre,
-            ["url"] = campoUrl,
-            ["pais"] = campoPais
+            //["id"] = id,
+            ["tipo"] = tipo,
+            ["fecha"] = fecha,
+            ["institucion"] = institucion,
+            ["nombre"] = nombre,
+            ["ambito"] = ambito,
+            ["docente"] = docente
         };
 
         if (editando)
         {
-            //datos.Remove("idr");
-            var resultado = await Api.ActualizarAsync("red", "idr", campoIdr.ToString(), datos);
+            //datos.Remove("id");
+            var resultado = await Api.ActualizarAsync("reconocimiento", "id", id.ToString(), datos);
             exito = resultado.exito;
             mensaje = resultado.mensaje;
         }
         else
         {
-            var resultado = await Api.CrearAsync("red", datos);
+            var resultado = await Api.CrearAsync("reconocimiento", datos);
             exito = resultado.exito;
             mensaje = resultado.mensaje;
         }
@@ -192,8 +242,8 @@
 
     private async Task EliminarRegistro(Dictionary<string, object?> reg)
     {
-        string codigo = reg["idr"]?.ToString() ?? "";
-        var resultado = await Api.EliminarAsync("red", "idr", codigo);
+        string codigo = reg["id"]?.ToString() ?? "";
+        var resultado = await Api.EliminarAsync("reconocimiento", "id", codigo);
         exito = resultado.exito;
         mensaje = resultado.mensaje;
 
