@@ -1,0 +1,246 @@
+@page "/beca"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<PageTitle>Beca</PageTitle>
+
+<div class="container mt-4">
+    <h3>Beca</h3>
+
+    @* ───────── ALERTA ───────── *@
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ───────── BOTON NUEVO ───────── *@
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nueva Beca</button>
+    }
+
+    @* ───────── LIMITE DE REGISTROS ───────── *@
+    <div class="d-flex align-items-center mb-3">
+        <label class="form-label me-2 mb-0">Limite:</label>
+        <input class="form-control me-2" type="number" style="width:100px" @bind="limite" />
+        <button class="btn btn-outline-secondary" @onclick="CargarRegistros">Cargar</button>
+    </div>
+
+    @* ───────── FORMULARIO ───────── *@
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Red" : "Nueva Red")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                     <div class="col-md-6 mb-3">
+                        <label class="form-label">Estudio realizado</label>
+                        <select class="form-select" @bind="estudios">
+                            <option value="0">Seleccione un estudio</option>
+                            @foreach (var estudio in registrosForeingKey)
+                            {
+                                <option value="@Convert.ToInt32(estudio["id"])">
+                                    @estudio["titulo"]
+                                </option>
+                            }
+                        </select>
+                    </div> 
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Tipo</label>
+                        <input class="form-control" @bind="tipo" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Institucion</label>
+                        <input class="form-control" type="url" @bind="institucion" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de inicio</label>
+                        <input type="date" class="form-control" @bind="fecha_inicio" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de finalización</label>
+                        <input type="date" class="form-control" @bind="fecha_fin" />
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @* ───────── SPINNER ───────── *@
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @* ───────── TABLA ───────── *@
+    @if (!cargando && registros.Any() && registrosForeingKey.Any())
+    {
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Estudios</th>
+                    <th>Tipo</th>
+                    <th>Institucion</th>
+                    <th>Fecha de inicio</th>
+                    <th>Fecha de finalización</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reg in registros)
+                {
+                    <tr>
+                        <td>@reg["estudios"]</td>
+                        <td>@reg["tipo"]</td>
+                        <td>@reg["institucion"]</td>
+                        <td>@reg["fecha_inicio"]</td>
+                        <td>@reg["fecha_fin"]</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1"
+                                    @onclick="() => EditarRegistro(reg)">Editar</button>
+                            <button class="btn btn-danger btn-sm"
+                                    @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (!cargando && !registros.Any() && !registrosForeingKey.Any())
+    {
+        <div class="alert alert-warning">No se encontraron registros en la tabla red.</div>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> registrosForeingKey = new();
+
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+    
+    // Campos del formulario
+    private int estudios = 0;
+    private string tipo = string.Empty;
+    private string institucion = string.Empty;
+    private DateTime fecha_inicio = DateTime.Now.Date;
+    private DateTime? fecha_fin = null;
+
+    private int? limite = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarRegistros();
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("beca", limite);
+        await CargarEstudiosSinBeca();
+        cargando = false;
+    }
+
+    private void NuevoRegistro()
+    {
+        editando = false;
+        estudios = 0;
+        tipo = string.Empty;
+        institucion = string.Empty;
+        fecha_inicio = DateTime.Now;
+        fecha_fin = DateTime.Now;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        estudios = Convert.ToInt32(reg["estudios"] ?? 0);
+        tipo = reg["tipo"]?.ToString() ?? "";
+        institucion = reg["institucion"]?.ToString() ?? "";
+        fecha_inicio = reg["fecha_inicio"]?.ToString() != null ? DateTime.Parse(reg["fecha_inicio"]!.ToString()!) : DateTime.Now.Date;
+        fecha_fin = reg["fecha_fin"]?.ToString() != null ? (DateTime?)DateTime.Parse(reg["fecha_fin"]!.ToString()!) : null;
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["estudios"] = estudios,
+            ["tipo"] = tipo,
+            ["institucion"] = institucion,
+            ["fecha_inicio"] = fecha_inicio,
+            ["fecha_fin"] = fecha_fin,
+        };
+
+        if (editando)
+        {
+            datos.Remove("estudios");
+            var resultado = await Api.ActualizarAsync("beca", "estudios", estudios.ToString(), datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("beca", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string codigo = reg["estudios"]?.ToString() ?? "";
+        var resultado = await Api.EliminarAsync("beca", "estudios", codigo);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito)
+            await CargarRegistros();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+    
+    private async Task CargarEstudiosSinBeca()
+{
+    var (ok, resultados, msg) = await Sp.EjecutarSpAsync("sp_ObtenerEstudiosSinBeca");
+
+    if (!ok)
+    {
+        mensaje = $"No se pudieron cargar estudios: {msg}";
+        registrosForeingKey = new();
+        return;
+    }
+
+    registrosForeingKey = resultados;
+}
+}
