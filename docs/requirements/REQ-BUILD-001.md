@@ -17,7 +17,7 @@ La estructura estándar de un proyecto Blazor Server facilita la comprensión po
   - `AddRazorComponents().AddInteractiveServerComponents()` para Blazor Server
   - `HttpClient` con `BaseAddress` leído de `appsettings.json` (clave `ApiBaseUrl`)
   - `ApiService` y `SpService` como servicios de DI (`AddScoped`)
-- `appsettings.json` contiene la clave `ApiBaseUrl` configurable (default: `http://localhost:5035`)
+- `appsettings.json` contiene la clave `ApiBaseUrl` configurable (default: `http://localhost:5034`)
 - `Properties/launchSettings.json` define el puerto del frontend (5200)
 - Los servicios están en `Services/` (ApiService.cs, SpService.cs)
 - Los componentes están en `Components/` con subcarpetas `Layout/` y `Pages/`

@@ -138,7 +138,7 @@ Dentro del frontend, la organización interna sigue un patrón de **2 capas**:
                            │ HTTP/JSON
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              API REST: ApiGenericaCsharp (Puerto 5035)          │
+│              API REST: ApiGenericaCsharp (Puerto 5034)          │
 │              [Caja negra — fuera del alcance de este SDD]       │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ SQL / Stored Procedures
@@ -405,7 +405,7 @@ builder.Services.AddRazorComponents()
 // 2. HttpClient con BaseAddress configurable
 builder.Services.AddScoped(sp => new HttpClient {
     BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]
-        ?? "http://localhost:5035")
+        ?? "http://localhost:5034")
 });
 
 // 3. Servicios de negocio

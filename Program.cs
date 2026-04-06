@@ -8,7 +8,7 @@ builder.Services.AddRazorComponents()
 
 // Configurar HttpClient para conectarse a la API
 // La URL base se lee de appsettings.json / appsettings.Development.json
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5035";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5034";
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(apiBaseUrl)

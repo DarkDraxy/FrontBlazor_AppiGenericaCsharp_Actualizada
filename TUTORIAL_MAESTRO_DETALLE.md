@@ -64,7 +64,7 @@ Una relacion maestro-detalle conecta un registro principal (maestro) con multipl
 
 ### Que se Necesita
 
-1. **API REST** corriendo (ApiGenericaCsharp en puerto 5035)
+1. **API REST** corriendo (ApiGenericaCsharp en puerto 5034)
 2. **Base de datos** con las tablas maestro/detalle y stored procedures
 3. **Proyecto Blazor Server** con servicios configurados
 
@@ -119,7 +119,7 @@ Los SPs manejan la transaccionalidad: insertar la factura Y sus productos en una
 
 ```csharp
 // Leer URL de la API desde configuracion
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5035";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5034";
 
 // Registrar HttpClient con la URL base
 builder.Services.AddScoped(sp => new HttpClient

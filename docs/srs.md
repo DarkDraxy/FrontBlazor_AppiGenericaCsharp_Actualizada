@@ -158,7 +158,7 @@ El frontend se comunica exclusivamente vía HTTP/JSON con la API backend, sin ac
                │ JSON payloads
                ▼
 ┌──────────────────────────────────────┐
-│  API REST: ApiGenericaCsharp (:5035) │
+│  API REST: ApiGenericaCsharp (:5034) │
 │                                      │
 │  /api/{tabla}                        │
 │  /api/{tabla}/{clave}/{valor}        │
@@ -215,7 +215,7 @@ El frontend se comunica exclusivamente vía HTTP/JSON con la API backend, sin ac
 |-----------------------------------|----------|----------------------------------------------------------------------------------|
 | Framework                         | Mandatorio | Blazor Server sobre .NET 9.0                                                    |
 | Render mode                       | Mandatorio | InteractiveServer en todas las páginas (conexión SignalR persistente)            |
-| Backend API                       | Mandatorio | ApiGenericaCsharp en puerto configurable (default 5035)                          |
+| Backend API                       | Mandatorio | ApiGenericaCsharp en puerto configurable (default 5034)                          |
 | Base de datos                     | Mandatorio | SQL Server con esquema `bdfacturas_sqlserver_local`                             |
 | Sin paquetes NuGet externos       | Mandatorio | Solo dependencias implícitas del SDK .NET 9.0                                   |
 | CSS                               | Mandatorio | Bootstrap 5 (incluido en wwwroot/lib)                                           |
@@ -239,7 +239,7 @@ El frontend se comunica exclusivamente vía HTTP/JSON con la API backend, sin ac
 |------------------------------------------------------------|-------------|-----------------------------------------------------------|
 | .NET 9.0 SDK instalado en el entorno de desarrollo         | Dependencia | El proyecto no compila                                    |
 | SQL Server accesible con la BD `bdfacturas_sqlserver_local` | Dependencia | La API no puede conectarse; el frontend muestra errores   |
-| API REST (ApiGenericaCsharp) corriendo en puerto 5035      | Dependencia | Todas las operaciones CRUD fallan                         |
+| API REST (ApiGenericaCsharp) corriendo en puerto 5034      | Dependencia | Todas las operaciones CRUD fallan                         |
 | Script SQL ejecutado previamente (tablas, triggers, SPs)   | Dependencia | Operaciones fallan o retornan errores de objetos faltantes |
 | Un solo usuario a la vez opera el sistema                  | Supuesto    | No hay control de concurrencia; posibles conflictos de datos |
 | Volumen de datos pequeño (< 1000 registros por tabla)      | Supuesto    | Sin paginación server-side; el límite es opcional y client-side |
@@ -499,7 +499,7 @@ Cada requerimiento se verifica mediante uno de los siguientes métodos:
 FrontBlazor_AppiGenericaCsharpTutorial/
 ├── FrontBlazor_AppiGenericaCsharp.csproj    (.NET 9.0)
 ├── Program.cs                                (Startup, DI, HttpClient)
-├── appsettings.json                          (ApiBaseUrl: localhost:5035)
+├── appsettings.json                          (ApiBaseUrl: localhost:5034)
 ├── appsettings.Development.json
 ├── Properties/launchSettings.json            (Puerto 5200)
 ├── Services/

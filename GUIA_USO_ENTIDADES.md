@@ -2,7 +2,7 @@
 
 Frontend Blazor Server que consume la API generica `ApiGenericaCsharp` para operaciones CRUD sobre cualquier tabla.
 
-- **API**: `http://localhost:5035` (configurado en `appsettings.Development.json` → `ApiBaseUrl`)
+- **API**: `http://localhost:5034` (configurado en `appsettings.Development.json` → `ApiBaseUrl`)
 - **Blazor**: `http://localhost:5200`
 - **Servicio**: `ApiService.cs` inyectado via DI
 
@@ -13,7 +13,7 @@ Frontend Blazor Server que consume la API generica `ApiGenericaCsharp` para oper
 ```
 Blazor Server (puerto 5200)
     └── ApiService.cs (HttpClient)
-            └── GET/POST/PUT/DELETE → http://localhost:5035/api/{tabla}
+            └── GET/POST/PUT/DELETE → http://localhost:5034/api/{tabla}
                     └── EntidadesController (API)
                             └── Base de datos (PostgreSQL / SQL Server)
 ```
@@ -22,7 +22,7 @@ Blazor Server (puerto 5200)
 
 ```csharp
 // Lee la URL de appsettings.json / appsettings.Development.json
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5035";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5034";
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(apiBaseUrl)
@@ -34,7 +34,7 @@ builder.Services.AddScoped<ApiService>();
 
 ```json
 {
-  "ApiBaseUrl": "http://localhost:5035"
+  "ApiBaseUrl": "http://localhost:5034"
 }
 ```
 
@@ -271,32 +271,32 @@ El parametro `camposEncriptar` se envia como query string: `?camposEncriptar=con
 
 ### Listar productos
 ```bash
-curl http://localhost:5035/api/producto
+curl http://localhost:5034/api/producto
 ```
 
 ### Crear producto
 ```bash
-curl -X POST http://localhost:5035/api/producto \
+curl -X POST http://localhost:5034/api/producto \
   -H "Content-Type: application/json" \
   -d '{"codigo":"PR099","nombre":"Test","stock":10,"valorunitario":500}'
 ```
 
 ### Actualizar producto
 ```bash
-curl -X PUT http://localhost:5035/api/producto/codigo/PR099 \
+curl -X PUT http://localhost:5034/api/producto/codigo/PR099 \
   -H "Content-Type: application/json" \
   -d '{"nombre":"Test Actualizado","stock":20,"valorunitario":600}'
 ```
 
 ### Eliminar producto
 ```bash
-curl -X DELETE http://localhost:5035/api/producto/codigo/PR099
+curl -X DELETE http://localhost:5034/api/producto/codigo/PR099
 ```
 
 ### Con limite
 ```bash
-curl http://localhost:5035/api/producto?limite=5
+curl http://localhost:5034/api/producto?limite=5
 ```
 
 ### Swagger UI
-Abrir en navegador: `http://localhost:5035/swagger`
+Abrir en navegador: `http://localhost:5034/swagger`

@@ -1,0 +1,101 @@
+@page "/apoyo-profesoral"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<div class="container mt-4">
+    <h3>Gestión de Apoyo Profesoral</h3>
+
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Estudio Asociado (FK)</label>
+                        <select class="form-select" @bind="estudio_i" disabled="@editando">
+                            <option value="0">-- Seleccione Estudio --</option>
+                            @foreach (var e in listaEstudios) {
+                                <option value="@e["id"]">@e["id"] - @e["titulo"]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Institución</label>
+                        <input class="form-control" @bind="inst_i" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Tipo de Apoyo</label>
+                        <input class="form-control" @bind="tipo_i" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>¿Cuenta con Apoyo?</label>
+                        <select class="form-select" @bind="con_apoyo_i">
+                            <option value="false">No</option>
+                            <option value="true">Sí</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" @onclick="Guardar">Guardar</button>
+                <button class="btn btn-secondary" @onclick="() => mostrarFormulario = false">Cancelar</button>
+            </div>
+        </div>
+    }
+    else {
+        <button class="btn btn-primary mb-3" @onclick="() => { editando = false; mostrarFormulario = true; }">Nuevo Apoyo</button>
+    }
+
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID Estudio</th>
+                <th>Institución</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var reg in registros) {
+                <tr>
+                    <td>@reg["estudios"]</td>
+                    <td>@reg["institucion"]</td>
+                    <td>@reg["tipo"]</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => Editar(reg)">Editar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> listaEstudios = new();
+    private bool mostrarFormulario = false, editando = false;
+    private int estudio_i;
+    private string inst_i = "", tipo_i = "";
+    private bool con_apoyo_i;
+
+    protected override async Task OnInitializedAsync() {
+        await Cargar();
+        listaEstudios = await Api.ListarAsync("estudios_realizados");
+    }
+
+    private async Task Cargar() => registros = await Api.ListarAsync("apoyo_profesoral");
+
+    private void Editar(Dictionary<string, object?> reg) {
+        editando = true;
+        estudio_i = Convert.ToInt32(reg["estudios"]);
+        inst_i = reg["institucion"]?.ToString() ?? "";
+        tipo_i = reg["tipo"]?.ToString() ?? "";
+        con_apoyo_i = reg["con_apoyo"]?.ToString()?.ToLower() == "true" || reg["con_apoyo"]?.ToString() == "1";
+        mostrarFormulario = true;
+    }
+
+    private async Task Guardar() {
+        var p = new Dictionary<string, object?> { ["estudios"] = estudio_i, ["con_apoyo"] = con_apoyo_i, ["institucion"] = inst_i, ["tipo"] = tipo_i };
+        var res = await Sp.EjecutarSpAsync(editando ? "sp_ActualizarApoyoProfesoral" : "sp_InsertarApoyoProfesoral", p);
+        if (res.exito) { mostrarFormulario = false; await Cargar(); }
+    }
+}

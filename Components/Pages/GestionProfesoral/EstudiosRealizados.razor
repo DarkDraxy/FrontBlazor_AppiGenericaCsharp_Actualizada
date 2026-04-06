@@ -1,0 +1,211 @@
+@page "/estudios-realizados"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+
+<PageTitle>Estudios Realizados</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Gestión de Estudios Realizados</h3>
+        @if (!mostrarFormulario)
+        {
+            <button class="btn btn-primary" @onclick="NuevoRegistro">Nuevo Estudio</button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">ID Registro</label>
+                        <input type="number" class="form-control" @bind="id_i" disabled="@editando" />
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Título</label>
+                        <input class="form-control" @bind="titulo_i" placeholder="Ej: Especialización en..." />
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Universidad</label>
+                        <input class="form-control" @bind="univ_i" />
+                    </div>
+
+                    @* SELECT PARA CLAVE FORÁNEA: DOCENTE *@
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold text-primary">Docente Responsable (FK)</label>
+                        <select class="form-select border-primary" @bind="docente_i">
+                            <option value="0">-- Seleccione un Docente --</option>
+                            @foreach (var d in listaDocentes)
+                            {
+                                <option value="@Convert.ToInt32(d["cedula"])">
+                                    @d["cedula"] - @d["nombres"] @d["apellidos"]
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3"><label>Fecha</label><input type="date" class="form-control" @bind="fecha_i" /></div>
+                    <div class="col-md-3 mb-3"><label>País</label><input class="form-control" @bind="pais_i" /></div>
+                    <div class="col-md-4 mb-3"><label>Ciudad</label><input class="form-control" @bind="ciudad_i" /></div>
+                    <div class="col-md-4 mb-3"><label>Tipo de Estudio</label><input class="form-control" @bind="tipo_i" /></div>
+                    <div class="col-md-4 mb-3"><label>Metodología</label><input class="form-control" @bind="metodo_i" /></div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label>¿Institución Acreditada?</label>
+                        <select class="form-select" @bind="acred_i">
+                            <option value="false">No</option>
+                            <option value="true">Sí</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label>Perfil del Egresado</label>
+                        <textarea class="form-control" @bind="perfil_i" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-success me-2" @onclick="Guardar">Guardar Estudio</button>
+                    <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (cargando)
+    {
+        <div class="spinner-border text-primary" role="status"></div>
+    }
+    else
+    {
+        <table class="table table-hover table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Título</th>
+                    <th>Docente (Cédula)</th>
+                    <th>Universidad</th>
+                    <th>País</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reg in registros)
+                {
+                    <tr>
+                        <td>@reg["titulo"]</td>
+                        <td>@reg["docente"]</td>
+                        <td>@reg["universidad"]</td>
+                        <td>@reg["pais"]</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1" @onclick="() => Editar(reg)">Editar</button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(reg)">Borrar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> listaDocentes = new();
+    private bool cargando = true, mostrarFormulario = false, editando = false, exito = false;
+    private string mensaje = "";
+
+    // Variables para el formulario
+    private int id_i, docente_i;
+    private string titulo_i = "", univ_i = "", tipo_i = "", ciudad_i = "", metodo_i = "", perfil_i = "", pais_i = "";
+    private DateTime fecha_i = DateTime.Now;
+    private bool acred_i = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+        // Cargamos la lista de docentes para llenar el SELECT
+        var dataDocentes = await Api.ListarAsync("docente");
+        listaDocentes = dataDocentes ?? new List<Dictionary<string, object?>>();
+    }
+
+        private async Task CargarDatos()
+    {
+        try 
+        {
+            cargando = true;
+            registros = await Api.ListarAsync("estudios_realizados") ?? new List<Dictionary<string, object?>>();
+        } 
+        catch (Exception ex) 
+        {
+            Console.WriteLine("Error: " + ex.Message);
+            registros = new List<Dictionary<string, object?>>();
+        }
+        finally 
+        {
+            cargando = false;
+        }
+    }
+
+
+    private void NuevoRegistro()
+    {
+        editando = false; id_i = 0; titulo_i = ""; univ_i = ""; docente_i = 0;
+        fecha_i = DateTime.Now; tipo_i = ""; ciudad_i = ""; metodo_i = ""; perfil_i = ""; pais_i = "";
+        mostrarFormulario = true; mensaje = "";
+    }
+
+    private void Editar(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        id_i = Convert.ToInt32(reg["id"]);
+        titulo_i = reg["titulo"]?.ToString() ?? "";
+        univ_i = reg["universidad"]?.ToString() ?? "";
+        docente_i = Convert.ToInt32(reg["docente"]);
+        fecha_i = DateTime.TryParse(reg["fecha"]?.ToString(), out var f) ? f : DateTime.Now;
+        tipo_i = reg["tipo"]?.ToString() ?? "";
+        ciudad_i = reg["ciudad"]?.ToString() ?? "";
+        metodo_i = reg["metodologia"]?.ToString() ?? "";
+        perfil_i = reg["perfil_egresado"]?.ToString() ?? "";
+        pais_i = reg["pais"]?.ToString() ?? "";
+        acred_i = reg["ins_acreditada"]?.ToString()?.ToLower() == "true" || reg["ins_acreditada"]?.ToString() == "1";
+        mostrarFormulario = true;
+    }
+
+    private async Task Guardar()
+    {
+        if (docente_i == 0) {
+            mensaje = "Debe seleccionar un docente de la lista.";
+            exito = false; return;
+        }
+
+        var p = new Dictionary<string, object?> {
+            ["id"] = id_i, ["titulo"] = titulo_i, ["universidad"] = univ_i, ["fecha"] = fecha_i,
+            ["tipo"] = tipo_i, ["ciudad"] = ciudad_i, ["docente"] = docente_i,
+            ["ins_acreditada"] = acred_i, ["metodologia"] = metodo_i,
+            ["perfil_egresado"] = perfil_i, ["pais"] = pais_i
+        };
+
+        var res = await Sp.EjecutarSpAsync(editando ? "sp_ActualizarEstudioRealizado" : "sp_InsertarEstudioRealizado", p);
+        exito = res.exito; mensaje = res.mensaje;
+
+        if (exito) {
+            mostrarFormulario = false;
+            await CargarDatos();
+        }
+    }
+
+    private async Task Eliminar(Dictionary<string, object?> reg)
+    {
+        var res = await Api.EliminarAsync("estudios_realizados", "id", reg["id"]?.ToString() ?? "");
+        if (res.exito) await CargarDatos();
+    }
+
+    private void Cancelar() => mostrarFormulario = false;
+}

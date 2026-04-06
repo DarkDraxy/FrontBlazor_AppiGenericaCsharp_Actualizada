@@ -2,7 +2,7 @@
 
 Frontend Blazor Server que consume stored procedures de la API generica `ApiGenericaCsharp`.
 
-- **API**: `http://localhost:5035` (configurado en `appsettings.Development.json`)
+- **API**: `http://localhost:5034` (configurado en `appsettings.Development.json`)
 - **Blazor**: `http://localhost:5200`
 - **Servicio**: `SpService.cs` inyectado via DI
 - **Endpoint API**: `POST /api/procedimientos/ejecutarsp`
@@ -14,7 +14,7 @@ Frontend Blazor Server que consume stored procedures de la API generica `ApiGene
 ```
 Blazor Server (puerto 5200)
     └── SpService.cs (HttpClient)
-            └── POST → http://localhost:5035/api/procedimientos/ejecutarsp
+            └── POST → http://localhost:5034/api/procedimientos/ejecutarsp
                     └── ProcedimientosController (API)
                             └── Stored Procedure (PostgreSQL / SQL Server)
 ```
@@ -350,14 +350,14 @@ clientes = rawClientes.Select(c => new ClienteInfo
 
 ### Listar facturas
 ```bash
-curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
+curl -X POST http://localhost:5034/api/procedimientos/ejecutarsp \
   -H "Content-Type: application/json" \
   -d '{"nombreSP":"sp_listar_facturas_y_productosporfactura","p_resultado":null}'
 ```
 
 ### Crear factura
 ```bash
-curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
+curl -X POST http://localhost:5034/api/procedimientos/ejecutarsp \
   -H "Content-Type: application/json" \
   -d '{
     "nombreSP":"sp_insertar_factura_y_productosporfactura",
@@ -370,21 +370,21 @@ curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
 
 ### Consultar factura
 ```bash
-curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
+curl -X POST http://localhost:5034/api/procedimientos/ejecutarsp \
   -H "Content-Type: application/json" \
   -d '{"nombreSP":"sp_consultar_factura_y_productosporfactura","p_numero":1,"p_resultado":null}'
 ```
 
 ### Eliminar factura
 ```bash
-curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
+curl -X POST http://localhost:5034/api/procedimientos/ejecutarsp \
   -H "Content-Type: application/json" \
   -d '{"nombreSP":"sp_borrar_factura_y_productosporfactura","p_numero":1,"p_resultado":null}'
 ```
 
 ### SP que no existe (error 400)
 ```bash
-curl -X POST http://localhost:5035/api/procedimientos/ejecutarsp \
+curl -X POST http://localhost:5034/api/procedimientos/ejecutarsp \
   -H "Content-Type: application/json" \
   -d '{"nombreSP":"sp_inexistente","p_resultado":null}'
 ```

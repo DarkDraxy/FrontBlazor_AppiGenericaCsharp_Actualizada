@@ -27,31 +27,36 @@ namespace FrontBlazor_AppiGenericaCsharp.Services
         // LISTAR: GET /api/{tabla}
         // Devuelve la lista de registros como diccionarios
         // ──────────────────────────────────────────────
-        public async Task<List<Dictionary<string, object?>>> ListarAsync(string tabla, int? limite = null)
+                public async Task<List<Dictionary<string, object?>>> ListarAsync(string tabla, int? limite = null)
         {
             try
             {
-                // Hace GET a la API y obtiene la respuesta como JSON
                 string url = $"/api/{tabla}";
-                if (limite.HasValue)
-                    url += $"?limite={limite.Value}";
+                if (limite.HasValue) url += $"?limite={limite.Value}";
 
                 var respuesta = await _http.GetFromJsonAsync<JsonElement>(url, _jsonOptions);
 
-                // Extrae la propiedad "datos" de la respuesta
+                // --- ESTE ES EL ARREGLO PARA QUE NO SALGA EL ERROR MORADO ---
+                // Si la API manda la lista directa [ ], la convertimos:
+                if (respuesta.ValueKind == JsonValueKind.Array) 
+                    return ConvertirDatos(respuesta);
+
+                // Si la manda dentro de "datos", la extraemos:
                 if (respuesta.TryGetProperty("datos", out JsonElement datos))
                 {
                     return ConvertirDatos(datos);
                 }
+                // -----------------------------------------------------------
 
                 return new List<Dictionary<string, object?>>();
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Error al listar {tabla}: {ex.Message}");
                 return new List<Dictionary<string, object?>>();
             }
         }
+
 
         // ──────────────────────────────────────────────
         // CREAR: POST /api/{tabla}
