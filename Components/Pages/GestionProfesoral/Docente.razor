@@ -1,0 +1,423 @@
+@page "/docente"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject FrontBlazor_AppiGenericaCsharp.Services.SpService Sp
+@inject IJSRuntime JS
+@using System.Text.Json
+
+<PageTitle>Docentes</PageTitle>
+
+<div class="container mt-4">
+    <h3>Docentes</h3>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @* ==================== VISTA LISTAR ==================== *@
+    @if (vista == "listar")
+    {
+        <button class="btn btn-primary mb-3" @onclick="MostrarFormularioNuevo">Nuevo Docente</button>
+
+        @if (cargando)
+        {
+            <div class="d-flex justify-content-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
+        else if (registros.Any())
+        {
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Cedula</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>Cargo</th>
+                        <th>Correo</th>
+                        <th>Linea Investigacion</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reg in registros)
+                    {
+                        <tr>
+                            <td>@ObtenerValor(reg, "cedula")</td>
+                            <td>@ObtenerValor(reg, "nombres")</td>
+                            <td>@ObtenerValor(reg, "apellidos")</td>
+                            <td>@ObtenerValor(reg, "cargo")</td>
+                            <td>@ObtenerValor(reg, "correo")</td>
+                            <td>@ObtenerNombreLinea(ObtenerValor(reg, "linea_investigacion_principal"))</td>
+                            <td>
+                                <button class="btn btn-info btn-sm me-1" @onclick="() => VerDocente(reg)">Ver</button>
+                                <button class="btn btn-warning btn-sm me-1" @onclick="() => EditarRegistro(reg)">Editar</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-warning">No se encontraron docentes.</div>
+        }
+    }
+
+    @* ==================== VISTA VER (SP) ==================== *@
+    @if (vista == "ver" && docenteDetalle != null)
+    {
+        <button class="btn btn-secondary mb-3 me-2" @onclick="Volver">Volver</button>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Docente: @ObtenerValor(docenteDetalle, "nombres") @ObtenerValor(docenteDetalle, "apellidos")</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4"><strong>Cedula:</strong> @ObtenerValor(docenteDetalle, "cedula")</div>
+                    <div class="col-md-4"><strong>Cargo:</strong> @ObtenerValor(docenteDetalle, "cargo")</div>
+                    <div class="col-md-4"><strong>Correo:</strong> @ObtenerValor(docenteDetalle, "correo")</div>
+                    <div class="col-md-4 mt-2"><strong>Telefono:</strong> @ObtenerValor(docenteDetalle, "telefono")</div>
+                    <div class="col-md-4 mt-2"><strong>Nacionalidad:</strong> @ObtenerValor(docenteDetalle, "nacionalidad")</div>
+                    <div class="col-md-4 mt-2"><strong>Linea:</strong> @ObtenerValor(docenteDetalle, "nombre_linea")</div>
+                </div>
+            </div>
+        </div>
+
+        @if (experienciasDetalle.Any())
+        {
+            <h5>Experiencias (via Stored Procedure)</h5>
+            <table class="table table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Cargo</th>
+                        <th>Institucion</th>
+                        <th>Tipo</th>
+                        <th>Fecha Inicio</th>
+                        <th>Fecha Fin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exp in experienciasDetalle)
+                    {
+                        <tr>
+                            <td>@ObtenerValor(exp, "nombre_cargo")</td>
+                            <td>@ObtenerValor(exp, "institucion")</td>
+                            <td>@ObtenerValor(exp, "tipo")</td>
+                            <td>@FormatearFecha(ObtenerValor(exp, "fecha_inicio"))</td>
+                            <td>@FormatearFecha(ObtenerValor(exp, "fecha_fin"))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-info">Este docente no tiene experiencias registradas.</div>
+        }
+    }
+
+    @* ==================== VISTA FORMULARIO ==================== *@
+    @if (vista == "formulario")
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Docente" : "Nuevo Docente")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cedula</label>
+                        <input class="form-control" type="number" @bind="campoCedula" disabled="@editando" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Nombres</label>
+                        <input class="form-control" @bind="campoNombres" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Apellidos</label>
+                        <input class="form-control" @bind="campoApellidos" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Genero</label>
+                        <select class="form-select" @bind="campoGenero">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Femenino">Femenino</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input class="form-control" @bind="campoCargo" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Fecha de Nacimiento</label>
+                        <input class="form-control" type="date" @bind="campoFechaNacimiento" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Correo</label>
+                        <input class="form-control" type="email" @bind="campoCorreo" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Telefono</label>
+                        <input class="form-control" @bind="campoTelefono" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Nacionalidad</label>
+                        <input class="form-control" @bind="campoNacionalidad" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Escalafon</label>
+                        <input class="form-control" @bind="campoEscalafon" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Linea de Investigacion</label>
+                        <select class="form-select" @bind="campoLineaInvestigacion">
+                            <option value="0">-- Seleccione --</option>
+                            @foreach (var linea in lineasInvestigacion)
+                            {
+                                <option value="@linea["id"]">@linea["nombre"]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">URL CvLAC</label>
+                        <input class="form-control" @bind="campoUrlCvlac" />
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Volver">Cancelar</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string vista = "listar";
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> lineasInvestigacion = new();
+    private Dictionary<string, object?>? docenteDetalle;
+    private List<Dictionary<string, object?>> experienciasDetalle = new();
+    private bool cargando = true;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+
+    private int campoCedula = 0;
+    private string campoNombres = string.Empty;
+    private string campoApellidos = string.Empty;
+    private string campoGenero = string.Empty;
+    private string campoCargo = string.Empty;
+    private DateOnly? campoFechaNacimiento;
+    private string campoCorreo = string.Empty;
+    private string campoTelefono = string.Empty;
+    private string campoNacionalidad = string.Empty;
+    private string campoEscalafon = string.Empty;
+    private int campoLineaInvestigacion = 0;
+    private string campoUrlCvlac = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        lineasInvestigacion = await Api.ListarAsync("linea_investigacion");
+        await CargarRegistros();
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        var todos = await Api.ListarAsync("docente");
+        registros = todos.Where(r => r["activo"]?.ToString() == "True" || r["activo"]?.ToString() == "true" || r["activo"]?.ToString() == "1").ToList();
+        cargando = false;
+    }
+    // ===== VER DETALLE CON STORED PROCEDURE =====
+    private async Task VerDocente(Dictionary<string, object?> doc)
+    {
+        int cedula = int.TryParse(ObtenerValor(doc, "cedula"), out int c) ? c : 0;
+
+        var parametros = new Dictionary<string, object?>
+        {
+            ["p_cedula"] = cedula
+        };
+
+        var (ok, resultados, msg) = await Sp.EjecutarSpAsync("sp_consultar_docente_con_experiencias", parametros);
+
+        if (ok && resultados.Count > 0)
+        {
+            docenteDetalle = resultados[0];
+            var expJson = ObtenerValor(resultados[0], "experiencias");
+            if (!string.IsNullOrEmpty(expJson) && expJson != "null")
+            {
+                try { experienciasDetalle = ParsearJsonArray(expJson); }
+                catch { experienciasDetalle = new(); }
+            }
+            else
+            {
+                experienciasDetalle = new();
+            }
+        }
+        else
+        {
+            docenteDetalle = doc;
+            experienciasDetalle = new();
+        }
+
+        vista = "ver";
+    }
+
+    // ===== CRUD CON API SERVICE =====
+    private string ObtenerNombreLinea(string? idLinea)
+    {
+        if (string.IsNullOrEmpty(idLinea)) return "—";
+        var linea = lineasInvestigacion.FirstOrDefault(l => l["id"]?.ToString() == idLinea);
+        return linea?["nombre"]?.ToString() ?? "—";
+    }
+
+    private async void MostrarFormularioNuevo()
+    {
+        editando = false;
+        campoCedula = 0;
+        campoNombres = string.Empty;
+        campoApellidos = string.Empty;
+        campoGenero = string.Empty;
+        campoCargo = string.Empty;
+        campoFechaNacimiento = null;
+        campoCorreo = string.Empty;
+        campoTelefono = string.Empty;
+        campoNacionalidad = string.Empty;
+        campoEscalafon = string.Empty;
+        campoLineaInvestigacion = 0;
+        campoUrlCvlac = string.Empty;
+        lineasInvestigacion = await Api.ListarAsync("linea_investigacion");
+        vista = "formulario";
+        mensaje = string.Empty;
+        StateHasChanged();
+    }
+
+    private async void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        campoCedula = int.TryParse(reg["cedula"]?.ToString(), out int c) ? c : 0;
+        campoNombres = reg["nombres"]?.ToString() ?? "";
+        campoApellidos = reg["apellidos"]?.ToString() ?? "";
+        campoGenero = reg["genero"]?.ToString() ?? "";
+        campoCargo = reg["cargo"]?.ToString() ?? "";
+        campoFechaNacimiento = DateTime.TryParse(reg["fecha_nacimiento"]?.ToString(), out DateTime fn) ? DateOnly.FromDateTime(fn) : null;
+        campoCorreo = reg["correo"]?.ToString() ?? "";
+        campoTelefono = reg["telefono"]?.ToString() ?? "";
+        campoNacionalidad = reg["nacionalidad"]?.ToString() ?? "";
+        campoEscalafon = reg["escalafon"]?.ToString() ?? "";
+        campoLineaInvestigacion = int.TryParse(reg["linea_investigacion_principal"]?.ToString(), out int li) ? li : 0;
+        campoUrlCvlac = reg["url_cvlac"]?.ToString() ?? "";
+        lineasInvestigacion = await Api.ListarAsync("linea_investigacion");
+        vista = "formulario";
+        mensaje = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task GuardarRegistro()
+    {
+        if (campoCedula == 0 || string.IsNullOrEmpty(campoNombres) || string.IsNullOrEmpty(campoApellidos))
+        {
+            exito = false;
+            mensaje = "Cedula, Nombres y Apellidos son obligatorios.";
+            return;
+        }
+
+        var datos = new Dictionary<string, object?>
+        {
+            ["cedula"] = campoCedula,
+            ["nombres"] = campoNombres,
+            ["apellidos"] = campoApellidos,
+            ["genero"] = string.IsNullOrEmpty(campoGenero) ? null : campoGenero,
+            ["cargo"] = string.IsNullOrEmpty(campoCargo) ? null : campoCargo,
+            ["fecha_nacimiento"] = campoFechaNacimiento?.ToString("yyyy-MM-dd"),
+            ["correo"] = string.IsNullOrEmpty(campoCorreo) ? null : campoCorreo,
+            ["telefono"] = string.IsNullOrEmpty(campoTelefono) ? null : campoTelefono,
+            ["nacionalidad"] = string.IsNullOrEmpty(campoNacionalidad) ? null : campoNacionalidad,
+            ["escalafon"] = string.IsNullOrEmpty(campoEscalafon) ? null : campoEscalafon,
+            ["linea_investigacion_principal"] = campoLineaInvestigacion == 0 ? null : campoLineaInvestigacion,
+            ["url_cvlac"] = string.IsNullOrEmpty(campoUrlCvlac) ? null : campoUrlCvlac
+        };
+
+        if (editando)
+        {
+            datos.Remove("cedula");
+            var confirmar = await JS.InvokeAsync<bool>("confirm", $"¿Está seguro de actualizar el docente {campoCedula}?");
+            if (!confirmar) return;
+            var resultado = await Api.ActualizarAsync("docente", "cedula", campoCedula.ToString(), datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("docente", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            vista = "listar";
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string cedula = reg["cedula"]?.ToString() ?? "";
+        string nombre = reg["nombres"]?.ToString() ?? "";
+        var confirmar = await JS.InvokeAsync<bool>("confirm", $"¿Está seguro de eliminar al docente '{nombre}' y todas sus experiencias y evaluaciones?");
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object?>
+        {
+            ["p_cedula"] = int.TryParse(cedula, out int c) ? c : 0
+        };
+
+        var (ok, resultados, msg) = await Sp.EjecutarSpAsync("sp_eliminar_docente", parametros);
+        exito = ok;
+        mensaje = ok ? "Docente eliminado exitosamente" : (msg ?? "Error al eliminar");
+
+        if (ok) await CargarRegistros();
+    }
+
+    private void Volver() { vista = "listar"; mensaje = string.Empty; }
+
+    // ===== UTILIDADES =====
+    private string ObtenerValor(Dictionary<string, object?> dic, string clave)
+    {
+        if (dic.TryGetValue(clave, out var val) && val != null) return val.ToString() ?? "";
+        return "";
+    }
+
+    private string FormatearFecha(string? fecha)
+    {
+        if (string.IsNullOrEmpty(fecha)) return "—";
+        return DateTime.TryParse(fecha, out DateTime f) ? f.ToString("yyyy-MM-dd") : fecha;
+    }
+
+    private List<Dictionary<string, object?>> ParsearJsonArray(string json)
+    {
+        var lista = new List<Dictionary<string, object?>>();
+        using var documento = JsonDocument.Parse(json);
+        foreach (var elemento in documento.RootElement.EnumerateArray())
+        {
+            var dic = new Dictionary<string, object?>();
+            foreach (var prop in elemento.EnumerateObject())
+            {
+                dic[prop.Name] = prop.Value.ValueKind == JsonValueKind.Null ? null : prop.Value.ToString();
+            }
+            lista.Add(dic);
+        }
+        return lista;
+    }
+}

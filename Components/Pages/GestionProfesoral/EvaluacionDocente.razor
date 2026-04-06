@@ -1,0 +1,210 @@
+@page "/evaluacion-docente"
+@rendermode InteractiveServer
+@inject FrontBlazor_AppiGenericaCsharp.Services.ApiService Api
+@inject IJSRuntime JS
+
+<PageTitle>Evaluaciones Docentes</PageTitle>
+
+<div class="container mt-4">
+    <h3>Evaluaciones Docentes</h3>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(exito ? "alert-success" : "alert-danger") alert-dismissible fade show">
+            @mensaje
+            <button type="button" class="btn-close" @onclick="() => mensaje = string.Empty"></button>
+        </div>
+    }
+
+    @if (!mostrarFormulario)
+    {
+        <button class="btn btn-primary mb-3" @onclick="NuevoRegistro">Nueva Evaluacion</button>
+    }
+
+    @if (mostrarFormulario)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                @(editando ? "Editar Evaluacion" : "Nueva Evaluacion")
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Docente</label>
+                        <select class="form-select" @bind="campoDocente">
+                            <option value="0">-- Seleccione --</option>
+                            @foreach (var doc in docentes)
+                            {
+                                <option value="@doc["cedula"]">@doc["nombres"] @doc["apellidos"] (@doc["cedula"])</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Calificacion</label>
+                        <input class="form-control" type="number" step="0.1" min="0" max="5" @bind="campoCalificacion" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Semestre</label>
+                        <input class="form-control" @bind="campoSemestre" placeholder="Ej: 2025-1" />
+                    </div>
+                </div>
+                <button class="btn btn-success me-2" @onclick="GuardarRegistro">Guardar</button>
+                <button class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @if (cargando)
+    {
+        <div class="d-flex justify-content-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    }
+
+    @if (!cargando && registros.Any())
+    {
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Docente</th>
+                    <th>Calificacion</th>
+                    <th>Semestre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reg in registros)
+                {
+                    <tr>
+                        <td>@reg["id"]</td>
+                        <td>@ObtenerNombreDocente(reg["docente"]?.ToString())</td>
+                        <td>@reg["calificacion"]</td>
+                        <td>@reg["semestre"]</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1" @onclick="() => EditarRegistro(reg)">Editar</button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @if (!cargando && !registros.Any())
+    {
+        <div class="alert alert-warning">No se encontraron evaluaciones.</div>
+    }
+</div>
+
+@code {
+    private List<Dictionary<string, object?>> registros = new();
+    private List<Dictionary<string, object?>> docentes = new();
+    private bool cargando = true;
+    private bool mostrarFormulario = false;
+    private bool editando = false;
+    private string mensaje = string.Empty;
+    private bool exito = false;
+    private int idEditar = 0;
+
+    private int campoDocente = 0;
+    private double campoCalificacion = 0;
+    private string campoSemestre = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        docentes = await Api.ListarAsync("docente");
+        await CargarRegistros();
+    }
+
+    private async Task CargarRegistros()
+    {
+        cargando = true;
+        registros = await Api.ListarAsync("evaluacion_docente");
+        cargando = false;
+    }
+
+    private string ObtenerNombreDocente(string? cedula)
+    {
+        if (string.IsNullOrEmpty(cedula)) return "—";
+        var doc = docentes.FirstOrDefault(d => d["cedula"]?.ToString() == cedula);
+        return doc != null ? $"{doc["nombres"]} {doc["apellidos"]}" : cedula;
+    }
+
+    private async void NuevoRegistro()
+    {
+        editando = false;
+        campoDocente = 0;
+        campoCalificacion = 0;
+        campoSemestre = string.Empty;
+        docentes = await Api.ListarAsync("docente");
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+        StateHasChanged();
+    }
+
+    private async void EditarRegistro(Dictionary<string, object?> reg)
+    {
+        editando = true;
+        idEditar = int.TryParse(reg["id"]?.ToString(), out int id) ? id : 0;
+        campoDocente = int.TryParse(reg["docente"]?.ToString(), out int d) ? d : 0;
+        campoCalificacion = double.TryParse(reg["calificacion"]?.ToString(), out double c) ? c : 0;
+        campoSemestre = reg["semestre"]?.ToString() ?? "";
+        docentes = await Api.ListarAsync("docente");
+        mostrarFormulario = true;
+        mensaje = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task GuardarRegistro()
+    {
+        var datos = new Dictionary<string, object?>
+        {
+            ["calificacion"] = campoCalificacion,
+            ["semestre"] = campoSemestre,
+            ["docente"] = campoDocente
+        };
+
+        if (editando)
+        {
+            var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Está seguro de actualizar esta evaluación?");
+            if (!confirmar) return;
+            var resultado = await Api.ActualizarAsync("evaluacion_docente", "id", idEditar.ToString(), datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+        else
+        {
+            var resultado = await Api.CrearAsync("evaluacion_docente", datos);
+            exito = resultado.exito;
+            mensaje = resultado.mensaje;
+        }
+
+        if (exito)
+        {
+            mostrarFormulario = false;
+            await CargarRegistros();
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object?> reg)
+    {
+        string id = reg["id"]?.ToString() ?? "";
+        var confirmar = await JS.InvokeAsync<bool>("confirm", "¿Está seguro de eliminar esta evaluación?");
+        if (!confirmar) return;
+
+        var resultado = await Api.EliminarAsync("evaluacion_docente", "id", id);
+        exito = resultado.exito;
+        mensaje = resultado.mensaje;
+
+        if (exito) await CargarRegistros();
+    }
+
+    private void Cancelar()
+    {
+        mostrarFormulario = false;
+        mensaje = string.Empty;
+    }
+}
